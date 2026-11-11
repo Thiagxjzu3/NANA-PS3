@@ -8,52 +8,71 @@ on:
       - main
 
 jobs:
-  prepare:
-    name: Prepare PS3 Development Environment
+  setup:
+    name: Install official PS3DEV
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout repository
+      - name: Checkout NANA-PS3
         uses: actions/checkout@v4
 
-      - name: Install build dependencies
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential \
-            git \
-            cmake \
-            python3 \
-            wget \
-            curl \
-            make \
-            pkg-config
+            autoconf automake bison flex \
+            gcc libelf-dev make texinfo \
+            patch wget zlib1g-dev libtool-bin \
+            bzip2 libgmp-dev pkg-config \
+            g++ libssl-dev clang
 
-      - name: Check compiler
+      - name: Download official PS3DEV release
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          gcc --version
-          make --version
+          gh release download nightly-2026-10-12 \
+            --repo ps3dev/ps3dev \
+            --pattern "ps3dev-*-ubuntu-latest.tar.gz"
 
-      - name: Check project source
-        run: |
-          test -f engine/core/main.c
-          echo "NANA-PS3 source found."
+          mkdir -p "$RUNNER_TEMP/ps3dev"
+          tar -xzf ps3dev-*-ubuntu-latest.tar.gz \
+            -C "$RUNNER_TEMP"
 
-      - name: Check PS3 toolchain
+          test -d "$RUNNER_TEMP/ps3dev"
+
+          echo "PS3DEV=$RUNNER_TEMP/ps3dev" >> "$GITHUB_ENV"
+          echo "PSL1GHT=$RUNNER_TEMP/ps3dev" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/ps3dev/bin" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/ps3dev/ppu/bin" >> "$GITHUB_PATH"
+          echo "$RUNNER_TEMP/ps3dev/spu/bin" >> "$GITHUB_PATH"
+
+      - name: Verify PPU compiler
         run: |
-          if command -v ppu-gcc >/dev/null 2>&1; then
+          command -v ppu-gcc
+          ppu-gcc --version
+
+      - name: Verify SPU compiler
+        run: |
+          command -v spu-gcc
+          spu-gcc --version
+
+      - name: Verify PSL1GHT
+        run: |
+          test -d "$PSL1GHT"
+          echo "PS3DEV environment detected."
+          echo "PSL1GHT directory detected."
+
+      - name: Save environment report
+        run: |
+          {
+            echo "NANA-PS3"
+            echo "PS3DEV installation verified"
             ppu-gcc --version
-          else
-            echo "PPU GCC not installed yet."
-          fi
+            spu-gcc --version
+          } > ps3dev-report.txt
 
-          if command -v ppu-lv2-gcc >/dev/null 2>&1; then
-            ppu-lv2-gcc --version
-          else
-            echo "PPU LV2 GCC not installed yet."
-          fi
-
-      - name: Environment report
-        run: |
-          echo "Environment preparation completed."
-          echo "Native PS3 compilation is not configured yet."
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: nana-ps3-environment-report
+          path: ps3dev-report.txt
