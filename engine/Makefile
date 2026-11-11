@@ -1,4 +1,3 @@
-
 .SUFFIXES:
 
 ifeq ($(strip $(PSL1GHT)),)
@@ -15,6 +14,7 @@ INCLUDES :=
 
 TITLE := NANA-PS3
 APPID := NANAPS301
+CONTENTID := UP0001-$(APPID)_00-0000000000000000
 
 CFLAGS = -O2 -Wall -mcpu=cell $(MACHDEP) $(INCLUDE)
 CXXFLAGS = $(CFLAGS)
@@ -49,16 +49,19 @@ export OFILES := $(CFILES:.c=.o) \
 export INCLUDE := $(LIBPSL1GHT_INC) -I$(CURDIR)/$(BUILD)
 export LIBPATHS := $(LIBPSL1GHT_LIB)
 
-.PHONY: all clean
+.PHONY: all pkg clean
 
 all: $(BUILD)
 
 $(BUILD):
 	mkdir -p $@
-	$(MAKE) --no-print-directory -C $@ -f $(CURDIR)/Makefile $(OUTPUT).elf
+	$(MAKE) --no-print-directory -C $@ -f $(CURDIR)/Makefile
+
+pkg: $(BUILD) $(OUTPUT).pkg
 
 clean:
-	rm -rf $(BUILD) $(OUTPUT).elf $(OUTPUT).self
+	rm -rf $(BUILD) $(OUTPUT).elf $(OUTPUT).self $(OUTPUT).fake.self \
+	       $(OUTPUT).pkg $(OUTPUT).gnpdrm.pkg $(OUTPUT).map
 
 else
 
