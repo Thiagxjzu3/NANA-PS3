@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: PS3DEV C Compilation
+    name: Build NANA-PS3 ELF
     runs-on: ubuntu-24.04
 
     steps:
@@ -24,41 +24,32 @@ jobs:
       - name: Download PS3DEV
         run: |
           URL="https://github.com/ps3dev/ps3dev/releases/download/nightly-2026-10-12/ps3dev-linux-X64.tar.gz"
-
           curl -L --fail "$URL" -o ps3dev.tar.gz
-
           echo "76b1b3bc9ac260a4ece86da520225da7f2f4e334174e37b850093ff925eeb900  ps3dev.tar.gz" | sha256sum -c -
 
-      - name: Extract SDK
+      - name: Extract PS3DEV
         run: |
           mkdir -p "$RUNNER_TEMP/ps3dev"
           tar -xzf ps3dev.tar.gz -C "$RUNNER_TEMP/ps3dev"
-
           echo "PS3DEV=$RUNNER_TEMP/ps3dev/ps3dev" >> "$GITHUB_ENV"
           echo "PSL1GHT=$RUNNER_TEMP/ps3dev/ps3dev" >> "$GITHUB_ENV"
 
-      - name: Configure toolchain
+      - name: Verify SDK
         run: |
-          echo "$PS3DEV/bin" >> "$GITHUB_PATH"
-          echo "$PS3DEV/ppu/bin" >> "$GITHUB_PATH"
-          echo "$PS3DEV/spu/bin" >> "$GITHUB_PATH"
-
-          test -x "$PS3DEV/ppu/bin/ppu-gcc"
           test -f "$PSL1GHT/ppu_rules"
+          test -x "$PS3DEV/ppu/bin/ppu-gcc"
 
-      - name: Compile NANA-PS3 C source
+      - name: Build ELF
         run: |
-          mkdir -p build
+          make -C engine clean
+          make -C engine
 
-          "$PS3DEV/ppu/bin/ppu-gcc" \
-            -O2 -Wall -Wextra \
-            -c engine/core/main.c \
-            -o build/main.o
+          test -f engine/nana_ps3.elf
 
-          file build/main.o
+          file engine/nana_ps3.elf
 
-      - name: Upload compiled object
+      - name: Upload PS3 ELF
         uses: actions/upload-artifact@v4
         with:
-          name: nana-ps3-ppu-object
-          path: build/main.o
+          name: NANA-PS3-ELF
+          path: engine/nana_ps3.elf
