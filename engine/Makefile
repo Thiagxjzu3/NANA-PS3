@@ -16,11 +16,11 @@ INCLUDES :=
 TITLE := NANA-PS3
 APPID := NANAPS301
 
-CFLAGS = -O2 -Wall -Wextra -mcpu=cell $(MACHDEP) $(INCLUDE)
+CFLAGS = -O2 -Wall -mcpu=cell $(MACHDEP) $(INCLUDE)
 CXXFLAGS = $(CFLAGS)
 LDFLAGS = $(MACHDEP) -Wl,-Map,$(TARGET).map
 
-LIBS := -lio -lsysutil -lrt -llv2 -lm
+LIBS := -lrsx -lgcm_sys -lio -lsysutil -lrt -llv2 -lm
 LIBDIRS :=
 
 ifneq ($(BUILD),$(notdir $(CURDIR)))
@@ -31,9 +31,20 @@ export DEPSDIR := $(CURDIR)/$(BUILD)
 export BUILDDIR := $(CURDIR)/$(BUILD)
 
 CFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+CPPFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
+sFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
+SFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.S)))
 
-export OFILES := $(CFILES:.c=.o)
+ifeq ($(strip $(CPPFILES)),)
 export LD := $(CC)
+else
+export LD := $(CXX)
+endif
+
+export OFILES := $(CFILES:.c=.o) \
+                 $(CPPFILES:.cpp=.o) \
+                 $(sFILES:.s=.o) \
+                 $(SFILES:.S=.o)
 
 export INCLUDE := $(LIBPSL1GHT_INC) -I$(CURDIR)/$(BUILD)
 export LIBPATHS := $(LIBPSL1GHT_LIB)
@@ -47,7 +58,7 @@ $(BUILD):
 	$(MAKE) --no-print-directory -C $@ -f $(CURDIR)/Makefile $(OUTPUT).elf
 
 clean:
-	rm -rf $(BUILD) $(OUTPUT).elf
+	rm -rf $(BUILD) $(OUTPUT).elf $(OUTPUT).self
 
 else
 
