@@ -8,8 +8,8 @@ on:
       - main
 
 jobs:
-  setup:
-    name: Install official PS3DEV
+  build:
+    name: PS3DEV C Compilation
     runs-on: ubuntu-24.04
 
     steps:
@@ -19,69 +19,46 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y \
-            build-essential git cmake python3 \
-            wget curl make pkg-config \
-            libelf-dev libgmp-dev libssl-dev \
-            zlib1g-dev libtool-bin
+          sudo apt-get install -y build-essential curl
 
-      - name: Download official PS3DEV
+      - name: Download PS3DEV
         run: |
           URL="https://github.com/ps3dev/ps3dev/releases/download/nightly-2026-10-12/ps3dev-linux-X64.tar.gz"
 
-          curl -L --fail --retry 3 \
-            "$URL" \
-            -o "$RUNNER_TEMP/ps3dev.tar.gz"
+          curl -L --fail "$URL" -o ps3dev.tar.gz
 
-          echo "76b1b3bc9ac260a4ece86da520225da7f2f4e334174e37b850093ff925eeb900  $RUNNER_TEMP/ps3dev.tar.gz" | sha256sum -c -
+          echo "76b1b3bc9ac260a4ece86da520225da7f2f4e334174e37b850093ff925eeb900  ps3dev.tar.gz" | sha256sum -c -
 
-      - name: Extract PS3DEV
+      - name: Extract SDK
         run: |
           mkdir -p "$RUNNER_TEMP/ps3dev"
+          tar -xzf ps3dev.tar.gz -C "$RUNNER_TEMP/ps3dev"
 
-          tar -xzf "$RUNNER_TEMP/ps3dev.tar.gz" \
-            -C "$RUNNER_TEMP/ps3dev"
+          echo "PS3DEV=$RUNNER_TEMP/ps3dev/ps3dev" >> "$GITHUB_ENV"
+          echo "PSL1GHT=$RUNNER_TEMP/ps3dev/ps3dev" >> "$GITHUB_ENV"
 
-          echo "PS3DEV=$RUNNER_TEMP/ps3dev" >> "$GITHUB_ENV"
-
-          find "$RUNNER_TEMP/ps3dev" \
-            \( -name ppu-gcc -o -name spu-gcc \) \
-            -exec dirname {} \; \
-            | sort -u >> "$GITHUB_PATH"
-
-      - name: Verify PPU compiler
+      - name: Configure toolchain
         run: |
-          PPU_GCC="$(find "$PS3DEV" -name ppu-gcc -print -quit)"
+          echo "$PS3DEV/bin" >> "$GITHUB_PATH"
+          echo "$PS3DEV/ppu/bin" >> "$GITHUB_PATH"
+          echo "$PS3DEV/spu/bin" >> "$GITHUB_PATH"
 
-          if [ -z "$PPU_GCC" ]; then
-            echo "PPU GCC was not found."
-            find "$PS3DEV" -maxdepth 4 -type f | head -100
-            exit 1
-          fi
+          test -x "$PS3DEV/ppu/bin/ppu-gcc"
+          test -f "$PSL1GHT/ppu_rules"
 
-          "$PPU_GCC" --version
-
-      - name: Verify SPU compiler
+      - name: Compile NANA-PS3 C source
         run: |
-          SPU_GCC="$(find "$PS3DEV" -name spu-gcc -print -quit)"
+          mkdir -p build
 
-          if [ -n "$SPU_GCC" ]; then
-            "$SPU_GCC" --version
-          else
-            echo "SPU GCC not found in this package."
-          fi
+          "$PS3DEV/ppu/bin/ppu-gcc" \
+            -O2 -Wall -Wextra \
+            -c engine/core/main.c \
+            -o build/main.o
 
-      - name: Save environment report
-        run: |
-          {
-            echo "NANA-PS3"
-            echo "PS3DEV package extracted successfully."
-            find "$PS3DEV" \
-              \( -name ppu-gcc -o -name spu-gcc \)
-          } > ps3dev-report.txt
+          file build/main.o
 
-      - name: Upload environment report
+      - name: Upload compiled object
         uses: actions/upload-artifact@v4
         with:
-          name: nana-ps3-environment-report
-          path: ps3dev-report.txt
+          name: nana-ps3-ppu-object
+          path: build/main.o
