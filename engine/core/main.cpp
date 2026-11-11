@@ -280,6 +280,7 @@ static void drawScreen(void)
     );
 }
 
+
 int main(int argc, const char *argv[])
 {
     (void)argc;
@@ -300,37 +301,40 @@ int main(int argc, const char *argv[])
 
     setRenderTarget(curr_fb);
 
+    // Dibujar la pantalla solamente una vez.
+    rsxSetClearDepthStencil(context, 0xffff);
+    drawScreen();
+
+    // Presentar el resultado y esperar el cambio de pantalla.
+    flip();
+
+    // A partir de aquí solo leer el mando.
     while (running)
     {
         sysUtilCheckCallback();
 
-        ioPadGetInfo(&padinfo);
-
-        for (int i = 0; i < MAX_PADS; ++i)
+        if (ioPadGetInfo(&padinfo) == 0)
         {
-            if (padinfo.status[i] &&
-                ioPadGetData(i, &paddata) == 0 &&
-                paddata.BTN_CROSS)
+            for (int i = 0; i < MAX_PADS; ++i)
             {
-                running = 0;
-                break;
+                if (padinfo.status[i] &&
+                    ioPadGetData(i, &paddata) == 0)
+                {
+                    if (paddata.BTN_CROSS)
+                    {
+                        running = 0;
+                        break;
+                    }
+                }
             }
         }
 
-        if (!running)
-            break;
-
-        rsxSetClearDepthStencil(context, 0xffff);
-
-        drawScreen();
-        flip();
-
-        usleep(10000);
+        usleep(16000);
     }
 
     sysUtilUnregisterCallback(0);
 
-    gcmSetWaitFlip(context);
+    // La imagen ya fue presentada y no quedan dibujos por enviar.
     rsxFinish(context, 1);
 
     free(host_addr);
