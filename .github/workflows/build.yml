@@ -1,5 +1,5 @@
 
-name: NANA-PS3 Build
+name: NANA-PS3 Native Build
 
 on:
   workflow_dispatch:
@@ -8,26 +8,52 @@ on:
       - main
 
 jobs:
-  build:
-    name: Build PS3 Homebrew
+  prepare:
+    name: Prepare PS3 Development Environment
     runs-on: ubuntu-22.04
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show project files
+      - name: Install build dependencies
         run: |
-          echo "NANA-PS3"
-          echo "Checking source files..."
-          find . -maxdepth 4 -type f
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            git \
+            cmake \
+            python3 \
+            wget \
+            curl \
+            make \
+            pkg-config
 
-      - name: Check C source
+      - name: Check compiler
+        run: |
+          gcc --version
+          make --version
+
+      - name: Check project source
         run: |
           test -f engine/core/main.c
-          echo "C source file found."
+          echo "NANA-PS3 source found."
 
-      - name: Build status
+      - name: Check PS3 toolchain
         run: |
-          echo "PS3DEV toolchain is not configured yet."
-          echo "This workflow currently validates the repository."
+          if command -v ppu-gcc >/dev/null 2>&1; then
+            ppu-gcc --version
+          else
+            echo "PPU GCC not installed yet."
+          fi
+
+          if command -v ppu-lv2-gcc >/dev/null 2>&1; then
+            ppu-lv2-gcc --version
+          else
+            echo "PPU LV2 GCC not installed yet."
+          fi
+
+      - name: Environment report
+        run: |
+          echo "Environment preparation completed."
+          echo "Native PS3 compilation is not configured yet."
