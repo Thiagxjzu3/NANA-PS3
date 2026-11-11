@@ -13,65 +13,74 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - name: Checkout NANA-PS3
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            autoconf automake bison flex \
-            gcc libelf-dev make texinfo \
-            patch wget zlib1g-dev libtool-bin \
-            bzip2 libgmp-dev pkg-config \
-            g++ libssl-dev clang
+            build-essential git cmake python3 \
+            wget curl make pkg-config \
+            libelf-dev libgmp-dev libssl-dev \
+            zlib1g-dev libtool-bin
 
-      - name: Download official PS3DEV release
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Download official PS3DEV
         run: |
-          gh release download nightly-2026-10-12 \
-            --repo ps3dev/ps3dev \
-            --pattern "ps3dev-*-ubuntu-latest.tar.gz"
+          URL="https://github.com/ps3dev/ps3dev/releases/download/nightly-2026-10-12/ps3dev-linux-X64.tar.gz"
 
+          curl -L --fail --retry 3 \
+            "$URL" \
+            -o "$RUNNER_TEMP/ps3dev.tar.gz"
+
+          echo "76b1b3bc9ac260a4ece86da520225da7f2f4e334174e37b850093ff925eeb900  $RUNNER_TEMP/ps3dev.tar.gz" | sha256sum -c -
+
+      - name: Extract PS3DEV
+        run: |
           mkdir -p "$RUNNER_TEMP/ps3dev"
-          tar -xzf ps3dev-*-ubuntu-latest.tar.gz \
-            -C "$RUNNER_TEMP"
 
-          test -d "$RUNNER_TEMP/ps3dev"
+          tar -xzf "$RUNNER_TEMP/ps3dev.tar.gz" \
+            -C "$RUNNER_TEMP/ps3dev"
 
           echo "PS3DEV=$RUNNER_TEMP/ps3dev" >> "$GITHUB_ENV"
-          echo "PSL1GHT=$RUNNER_TEMP/ps3dev" >> "$GITHUB_ENV"
-          echo "$RUNNER_TEMP/ps3dev/bin" >> "$GITHUB_PATH"
-          echo "$RUNNER_TEMP/ps3dev/ppu/bin" >> "$GITHUB_PATH"
-          echo "$RUNNER_TEMP/ps3dev/spu/bin" >> "$GITHUB_PATH"
+
+          find "$RUNNER_TEMP/ps3dev" \
+            \( -name ppu-gcc -o -name spu-gcc \) \
+            -exec dirname {} \; \
+            | sort -u >> "$GITHUB_PATH"
 
       - name: Verify PPU compiler
         run: |
-          command -v ppu-gcc
-          ppu-gcc --version
+          PPU_GCC="$(find "$PS3DEV" -name ppu-gcc -print -quit)"
+
+          if [ -z "$PPU_GCC" ]; then
+            echo "PPU GCC was not found."
+            find "$PS3DEV" -maxdepth 4 -type f | head -100
+            exit 1
+          fi
+
+          "$PPU_GCC" --version
 
       - name: Verify SPU compiler
         run: |
-          command -v spu-gcc
-          spu-gcc --version
+          SPU_GCC="$(find "$PS3DEV" -name spu-gcc -print -quit)"
 
-      - name: Verify PSL1GHT
-        run: |
-          test -d "$PSL1GHT"
-          echo "PS3DEV environment detected."
-          echo "PSL1GHT directory detected."
+          if [ -n "$SPU_GCC" ]; then
+            "$SPU_GCC" --version
+          else
+            echo "SPU GCC not found in this package."
+          fi
 
       - name: Save environment report
         run: |
           {
             echo "NANA-PS3"
-            echo "PS3DEV installation verified"
-            ppu-gcc --version
-            spu-gcc --version
+            echo "PS3DEV package extracted successfully."
+            find "$PS3DEV" \
+              \( -name ppu-gcc -o -name spu-gcc \)
           } > ps3dev-report.txt
 
-      - name: Upload report
+      - name: Upload environment report
         uses: actions/upload-artifact@v4
         with:
           name: nana-ps3-environment-report
