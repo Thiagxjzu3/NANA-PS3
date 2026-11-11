@@ -66,7 +66,7 @@ int main(int argc, const char *argv[])
             break;
 
         rsxSetClearColor(context, 0x00C77991);
-        rsxSetClearDepthStencil(context, 0xffff, 0);
+        rsxSetClearDepthStencil(context, 0xffff);
 
         rsxClearSurface(
             context,
