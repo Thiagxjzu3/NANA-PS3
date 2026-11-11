@@ -9,7 +9,7 @@ on:
 
 jobs:
   build:
-    name: Build NANA-PS3 ELF
+    name: Build NANA-PS3 PKG
     runs-on: ubuntu-24.04
 
     steps:
@@ -38,18 +38,22 @@ jobs:
         run: |
           test -f "$PSL1GHT/ppu_rules"
           test -x "$PS3DEV/ppu/bin/ppu-gcc"
+          test -f "$PS3DEV/bin/sfo.xml"
+          test -f "$PS3DEV/bin/ICON0.PNG"
 
-      - name: Build ELF
+      - name: Build PS3 package
         run: |
           make -C engine clean
           make -C engine
+          make -C engine pkg
+          test -f engine/nana_ps3.pkg
+          file engine/nana_ps3.pkg
 
-          test -f engine/nana_ps3.elf
-
-          file engine/nana_ps3.elf
-
-      - name: Upload PS3 ELF
+      - name: Upload PS3 package
         uses: actions/upload-artifact@v4
         with:
-          name: NANA-PS3-ELF
-          path: engine/nana_ps3.elf
+          name: NANA-PS3-PKG
+          path: |
+            engine/nana_ps3.pkg
+            engine/nana_ps3.elf
+          if-no-files-found: error
