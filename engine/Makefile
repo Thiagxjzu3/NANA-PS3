@@ -1,27 +1,57 @@
 
-# NANA-PS3
-# Initial native build configuration
+.SUFFIXES:
+
+ifeq ($(strip $(PSL1GHT)),)
+$(error PSL1GHT is not configured)
+endif
+
+include $(PSL1GHT)/ppu_rules
 
 TARGET := nana_ps3
 BUILD := build
+SOURCES := core
+DATA :=
+INCLUDES :=
 
-SOURCES := core/main.c
-OBJECTS := $(SOURCES:%.c=$(BUILD)/%.o)
+TITLE := NANA-PS3
+APPID := NANAPS301
 
-CC := ppu-gcc
+CFLAGS := -O2 -Wall -mcpu=cell $(MACHDEP) $(INCLUDE)
+CXXFLAGS := $(CFLAGS)
+LDFLAGS := $(MACHDEP) -Wl,-Map,$(TARGET).map
 
-CFLAGS := -O2 -Wall -Wextra
-LDFLAGS :=
+LIBS := -lio -lsysutil -lrt -llv2 -lm
+LIBDIRS :=
 
-all: check-toolchain
+ifneq ($(BUILD),$(notdir $(CURDIR)))
 
-check-toolchain:
-	@command -v $(CC) >/dev/null 2>&1 || \
-		(echo "ERROR: PPU GCC not installed"; exit 1)
-	@echo "PPU compiler detected."
-	@echo "PS3 SDK configuration still required."
+export OUTPUT := $(CURDIR)/$(TARGET)
+export VPATH := $(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
+export DEPSDIR := $(CURDIR)/$(BUILD)
+export BUILDDIR := $(CURDIR)/$(BUILD)
+
+CFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+OFILES := $(CFILES:.c=.o)
+DEPENDS := $(OFILES:.o=.d)
+
+export INCLUDE := $(LIBPSL1GHT_INC) -I$(CURDIR)/$(BUILD)
+export LIBPATHS := $(LIBPSL1GHT_LIB)
+
+.PHONY: all clean
+
+all: $(BUILD)
+
+$(BUILD):
+	mkdir -p $@
+	$(MAKE) --no-print-directory -C $@ -f $(CURDIR)/Makefile $(OUTPUT).elf
 
 clean:
-	rm -rf $(BUILD)
+	rm -rf $(BUILD) $(OUTPUT).elf
 
-.PHONY: all clean check-toolchain
+else
+
+$(OUTPUT).elf: $(OFILES)
+
+-include $(DEPENDS)
+
+endif
