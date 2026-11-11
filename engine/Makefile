@@ -16,9 +16,6 @@ INCLUDES :=
 TITLE := NANA-PS3
 APPID := NANAPS301
 
-# Use the PS3 compiler as linker, not Linux ld.
-LD := $(PREFIX)gcc
-
 CFLAGS = -O2 -Wall -Wextra -mcpu=cell $(MACHDEP) $(INCLUDE)
 CXXFLAGS = $(CFLAGS)
 LDFLAGS = $(MACHDEP) -Wl,-Map,$(TARGET).map
@@ -34,8 +31,9 @@ export DEPSDIR := $(CURDIR)/$(BUILD)
 export BUILDDIR := $(CURDIR)/$(BUILD)
 
 CFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
-OFILES := $(CFILES:.c=.o)
-DEPENDS := $(OFILES:.o=.d)
+
+export OFILES := $(CFILES:.c=.o)
+export LD := $(CC)
 
 export INCLUDE := $(LIBPSL1GHT_INC) -I$(CURDIR)/$(BUILD)
 export LIBPATHS := $(LIBPSL1GHT_LIB)
@@ -52,6 +50,8 @@ clean:
 	rm -rf $(BUILD) $(OUTPUT).elf
 
 else
+
+DEPENDS := $(OFILES:.o=.d)
 
 $(OUTPUT).elf: $(OFILES)
 
