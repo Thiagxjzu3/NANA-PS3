@@ -15,21 +15,10 @@ SYS_PROCESS_PARAM(1001, 0x100000);
 
 static int running = 1;
 
-extern "C" {
-
-static void program_exit_callback()
-{
-    sysUtilUnregisterCallback(0);
-    gcmSetWaitFlip(context);
-    rsxFinish(context, 1);
-}
-
 static void sysutil_exit_callback(u64 status, u64 param, void *userdata)
 {
     if (status == SYSUTIL_EXIT_GAME)
         running = 0;
-}
-
 }
 
 int main(int argc, const char *argv[])
@@ -46,7 +35,6 @@ int main(int argc, const char *argv[])
 
     ioPadInit(7);
 
-    atexit(program_exit_callback);
     sysUtilRegisterCallback(0, sysutil_exit_callback, NULL);
 
     setRenderTarget(curr_fb);
@@ -69,6 +57,9 @@ int main(int argc, const char *argv[])
             }
         }
 
+        if (!running)
+            break;
+
         rsxSetClearColor(context, 0x101020);
         rsxSetClearDepthStencil(context, 0xffff);
 
@@ -85,6 +76,12 @@ int main(int argc, const char *argv[])
         flip();
     }
 
+    // Cerrar primero el sistema gráfico.
+    sysUtilUnregisterCallback(0);
+    gcmSetWaitFlip(context);
+    rsxFinish(context, 1);
+
+    // Liberar la memoria después de terminar RSX.
     free(host_addr);
 
     return 0;
