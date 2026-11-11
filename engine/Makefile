@@ -16,9 +16,12 @@ INCLUDES :=
 TITLE := NANA-PS3
 APPID := NANAPS301
 
-CFLAGS := -O2 -Wall -mcpu=cell $(MACHDEP) $(INCLUDE)
-CXXFLAGS := $(CFLAGS)
-LDFLAGS := $(MACHDEP) -Wl,-Map,$(TARGET).map
+# Use the PS3 compiler as linker, not Linux ld.
+LD := $(PREFIX)gcc
+
+CFLAGS = -O2 -Wall -Wextra -mcpu=cell $(MACHDEP) $(INCLUDE)
+CXXFLAGS = $(CFLAGS)
+LDFLAGS = $(MACHDEP) -Wl,-Map,$(TARGET).map
 
 LIBS := -lio -lsysutil -lrt -llv2 -lm
 LIBDIRS :=
