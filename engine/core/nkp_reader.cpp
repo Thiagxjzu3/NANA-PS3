@@ -20,6 +20,7 @@ static uint32_t readU32LE(const uint8_t *p)
 static ResourceType detectType(const std::string& name)
 {
     size_t dot = name.find_last_of('.');
+
     if (dot == std::string::npos)
         return RESOURCE_UNKNOWN;
 
@@ -90,11 +91,14 @@ bool Reader::open(const void *buffer, size_t bufferSize)
         uint32_t nameOffset = readU32LE(m_buffer + entryPos);
         uint32_t dataOffset = readU32LE(m_buffer + entryPos + 4);
 
-        if (nameOffset >= bufferSize || dataOffset >= bufferSize)
-            return fail("Entry offset outside file");
+        if (nameOffset >= m_declaredSize ||
+            dataOffset >= m_declaredSize)
+        {
+            return fail("Entry offset outside declared file size");
+        }
 
         const uint8_t *nameStart = m_buffer + nameOffset;
-        size_t remaining = bufferSize - nameOffset;
+        size_t remaining = m_declaredSize - nameOffset;
 
         const uint8_t *terminator =
             (const uint8_t *)memchr(nameStart, 0, remaining);
@@ -135,31 +139,30 @@ bool Reader::open(const void *buffer, size_t bufferSize)
             }
         }
 
-        if (nextOffset < entry.dataOffset)
+        if (nextOffset <= entry.dataOffset)
             return fail("Invalid resource boundaries");
 
         entry.size = nextOffset - entry.dataOffset;
 
-        if (entry.size == 0)
-            return fail("Empty resource");
-
-        if ((uint64_t)entry.dataOffset + entry.size > bufferSize)
-            return fail("Resource exceeds file bounds");
-
-        if (entry.type == RESOURCE_NKT ||
-            entry.type == RESOURCE_NKF ||
-            entry.type == RESOURCE_TMF)
+        if ((uint64_t)entry.dataOffset + entry.size >
+            m_declaredSize)
         {
-            if (entry.size >= 4)
-            {
-                const uint8_t *p = m_buffer + entry.dataOffset;
+            return fail("Resource exceeds declared file bounds");
+        }
 
-                if (memcmp(p, "NKT\x1A", 4) == 0 ||
-                    memcmp(p, "NKF\x1A", 4) == 0 ||
-                    memcmp(p, "TMF\x1A", 4) == 0)
-                {
-                    entry.signatureValid = true;
-                }
+        const uint8_t *p = m_buffer + entry.dataOffset;
+
+        if (entry.size >= 4)
+        {
+            if (entry.type == RESOURCE_NKT &&
+                memcmp(p, "NKT\x1A", 4) == 0)
+            {
+                entry.signatureValid = true;
+            }
+            else if (entry.type == RESOURCE_NKF &&
+                     memcmp(p, "NF2\x1A", 4) == 0)
+            {
+                entry.signatureValid = true;
             }
         }
     }
@@ -212,8 +215,11 @@ const uint8_t* Reader::resourceData(const Entry& entry) const
     if (!m_buffer)
         return 0;
 
-    if ((uint64_t)entry.dataOffset + entry.size > m_bufferSize)
+    if ((uint64_t)entry.dataOffset + entry.size >
+        m_declaredSize)
+    {
         return 0;
+    }
 
     return m_buffer + entry.dataOffset;
 }
