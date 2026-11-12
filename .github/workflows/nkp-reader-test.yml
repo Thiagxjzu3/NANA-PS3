@@ -1,0 +1,33 @@
+
+name: NANA NKP Reader Test
+
+on:
+  push:
+    paths:
+      - "TITLE.NKP"
+      - "engine/core/nkp_reader.h"
+      - "engine/core/nkp_reader.cpp"
+      - "tests/nkp_reader_test.cpp"
+      - ".github/workflows/nkp-reader-test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-nkp-reader:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compile NKP reader test
+        run: |
+          g++ -std=c++11 -Wall -Wextra -Wpedantic \
+            -I engine/core \
+            tests/nkp_reader_test.cpp \
+            engine/core/nkp_reader.cpp \
+            -o nkp_reader_test
+
+      - name: Run NKP reader test
+        run: ./nkp_reader_test
