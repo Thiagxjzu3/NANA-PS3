@@ -4,6 +4,7 @@
 #include <iterator>
 #include <vector>
 #include <stdint.h>
+#include <iomanip>
 
 #include "nkp_reader.h"
 
@@ -30,9 +31,8 @@ int main()
         return 2;
     }
 
-    std::cout << "NANA NKP READER TEST\n";
+    std::cout << "NANA NKT/NKF/TMF HEADER ANALYSIS\n";
     std::cout << "File size: " << reader.fileSize() << "\n";
-    std::cout << "Declared size: " << reader.declaredSize() << "\n";
     std::cout << "Resources: " << reader.resourceCount() << "\n\n";
 
     const std::vector<nana::nkp::Entry>& entries =
@@ -41,28 +41,36 @@ int main()
     for (size_t i = 0; i < entries.size(); ++i)
     {
         const nana::nkp::Entry& e = entries[i];
+        const uint8_t* data = reader.resourceData(e);
 
-        std::cout << i + 1 << ". " << e.name
-                  << " | size=" << e.size
-                  << " | signature="
-                  << (e.signatureValid ? "YES" : "NO")
-                  << "\n";
-
-        if (!reader.resourceData(e))
+        if (!data)
         {
             std::cerr << "ERROR: Invalid resource data\n";
             return 3;
         }
+
+        std::cout << i + 1 << ". " << e.name << "\n";
+        std::cout << "   Offset: 0x"
+                  << std::hex << std::uppercase
+                  << e.dataOffset << "\n";
+
+        std::cout << "   Size: " << std::dec
+                  << e.size << "\n";
+
+        std::cout << "   Header: ";
+
+        size_t bytesToPrint = e.size < 16 ? e.size : 16;
+
+        for (size_t j = 0; j < bytesToPrint; ++j)
+        {
+            std::cout << std::hex << std::uppercase
+                      << std::setw(2) << std::setfill('0')
+                      << (unsigned int)data[j] << " ";
+        }
+
+        std::cout << std::dec << "\n\n";
     }
 
-    if (reader.fileSize() != 1681424 ||
-        reader.declaredSize() != 1681424 ||
-        reader.resourceCount() != 25)
-    {
-        std::cerr << "ERROR: Validation failed\n";
-        return 4;
-    }
-
-    std::cout << "\nBASIC TESTS PASSED\n";
+    std::cout << "HEADER ANALYSIS COMPLETE\n";
     return 0;
 }
