@@ -31,16 +31,21 @@ int main()
         return 2;
     }
 
-    std::cout << "NANA NKT/NKF/TMF HEADER ANALYSIS\n";
-    std::cout << "File size: " << reader.fileSize() << "\n";
-    std::cout << "Resources: " << reader.resourceCount() << "\n\n";
-
     const std::vector<nana::nkp::Entry>& entries =
         reader.entries();
+
+    std::cout << "NANA RESOURCE DEEP ANALYSIS\n";
+    std::cout << "File size: " << reader.fileSize() << "\n";
+    std::cout << "Resources: " << reader.resourceCount() << "\n\n";
 
     for (size_t i = 0; i < entries.size(); ++i)
     {
         const nana::nkp::Entry& e = entries[i];
+
+        if (e.type != nana::nkp::RESOURCE_NKF &&
+            e.type != nana::nkp::RESOURCE_TMF)
+            continue;
+
         const uint8_t* data = reader.resourceData(e);
 
         if (!data)
@@ -49,28 +54,37 @@ int main()
             return 3;
         }
 
-        std::cout << i + 1 << ". " << e.name << "\n";
-        std::cout << "   Offset: 0x"
-                  << std::hex << std::uppercase
-                  << e.dataOffset << "\n";
+        std::cout << "================================\n";
+        std::cout << e.name << "\n";
+        std::cout << "Offset: 0x" << std::hex
+                  << std::uppercase << e.dataOffset << "\n";
+        std::cout << "Size: " << std::dec << e.size << "\n";
+        std::cout << "Signature valid: "
+                  << (e.signatureValid ? "YES" : "NO") << "\n";
 
-        std::cout << "   Size: " << std::dec
-                  << e.size << "\n";
+        size_t limit = e.size < 64 ? e.size : 64;
 
-        std::cout << "   Header: ";
+        std::cout << "Bytes:\n";
 
-        size_t bytesToPrint = e.size < 16 ? e.size : 16;
-
-        for (size_t j = 0; j < bytesToPrint; ++j)
+        for (size_t j = 0; j < limit; ++j)
         {
+            if (j % 16 == 0)
+            {
+                std::cout << "  ";
+            }
+
             std::cout << std::hex << std::uppercase
                       << std::setw(2) << std::setfill('0')
                       << (unsigned int)data[j] << " ";
+
+            if (j % 16 == 15 || j + 1 == limit)
+                std::cout << "\n";
         }
 
-        std::cout << std::dec << "\n\n";
+        std::cout << std::dec << "\n";
     }
 
-    std::cout << "HEADER ANALYSIS COMPLETE\n";
+    std::cout << "DEEP ANALYSIS COMPLETE\n";
+
     return 0;
 }
